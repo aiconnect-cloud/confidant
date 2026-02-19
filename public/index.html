@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confidant - Compartilhar Segredos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #1f2937;
+            margin-bottom: 8px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #374151;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 8px rgba(102, 126, 234, 0.2);
+        }
+
+        button {
+            width: 100%;
+            padding: 14px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .result {
+            margin-top: 24px;
+            padding: 20px;
+            background: #f0f9ff;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .result.success {
+            display: block;
+            background: #10b981;
+            color: white;
+            padding: 16px 20px;
+            border-radius: 8px;
+        }
+
+        .result.error {
+            display: block;
+            background: #ef4444;
+            color: white;
+            padding: 16px 20px;
+            border-radius: 8px;
+        }
+
+        .result-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .result-value {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .copy-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: background-color 0.3s;
+        }
+
+        .copy-button:hover {
+            background: #5568d3;
+        }
+
+        .copy-button:active {
+            transform: scale(0.95);
+        }
+
+        .error-message {
+            color: #dc2626;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 24px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Confidant - Compartilhar Segredos</h1>
+        
+        <form id="secretForm">
+            <div class="form-group">
+                <label for="secret">Segredo (obrigatório)</label>
+                <input type="text" id="secret" name="secret" required placeholder="Digite seu segredo aqui...">
+            </div>
+            
+            <div class="form-group">
+                <label for="ttl">TTL (milissegundos) - Opcional</label>
+                <input type="number" id="ttl" name="ttl" min="1" placeholder="3600000 (1 hora)">
+            </div>
+            
+            <div class="form-group">
+                <label for="maxAccessCount">Número Máximo de Acessos - Opcional</label>
+                <input type="number" id="maxAccessCount" name="maxAccessCount" min="1" placeholder="3">
+            </div>
+            
+            <button type="submit">Criar Segredo</button>
+        </form>
+        
+        <div id="result" class="result">
+            <div class="result-title" id="resultTitle"></div>
+            <div class="result-value" id="resultValue"></div>
+            <button id="copyButton" class="copy-button">Copiar ID</button>
+        </div>
+        
+        <div id="errorMessage" class="error-message"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+        
+        document.getElementById('secretForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const secret = document.getElementById('secret').value;
+            const ttl = document.getElementById('ttl').value ? parseInt(document.getElementById('ttl').value) : undefined;
+            const maxAccessCount = document.getElementById('maxAccessCount').value ? parseInt(document.getElementById('maxAccessCount').value) : undefined;
+            
+            if (!secret || secret.trim() === '') {
+                showError('Por favor, digite um segredo.');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/secrets`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        secret: secret,
+                        ttl: ttl,
+                        maxAccessCount: maxAccessCount
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.status === 201) {
+                    showSuccess(data.id);
+                } else {
+                    showError('Erro ao criar segredo. Tente novamente.');
+                }
+            } catch (error) {
+                showError('Erro de conexão. Tente novamente.');
+            }
+        });
+        
+        function showSuccess(secretId) {
+            const resultDiv = document.getElementById('result');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultValue = document.getElementById('resultValue');
+            const copyButton = document.getElementById('copyButton');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result success';
+            
+            resultTitle.textContent = 'Segredo Criado com Sucesso!';
+            resultValue.textContent = `ID: ${secretId}`;
+            
+            copyButton.style.display = 'block';
+            errorMessage.style.display = 'none';
+            
+            copyToClipboard(secretId);
+        }
+        
+        function showError(message) {
+            const resultDiv = document.getElementById('result');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultValue = document.getElementById('resultValue');
+            const copyButton = document.getElementById('copyButton');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result error';
+            
+            resultTitle.textContent = 'Erro';
+            resultValue.textContent = '';
+            
+            copyButton.style.display = 'none';
+            errorMessage.textContent = message;
+        }
+        
+        function copyToClipboard(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text)
+                    .then(() => {
+                        const copyButton = document.getElementById('copyButton');
+                        copyButton.textContent = 'Copiado!';
+                        setTimeout(() => {
+                            copyButton.textContent = 'Copiar ID';
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy: ', err);
+                        // Fallback: show ID in a selectable text box
+                        const resultValue = document.getElementById('resultValue');
+                        resultValue.contentEditable = true;
+                        resultValue.focus();
+                        document.execCommand('selectAll');
+                    });
+            } else {
+                // Fallback for browsers without Clipboard API
+                const resultValue = document.getElementById('resultValue');
+                resultValue.contentEditable = true;
+                resultValue.focus();
+                document.execCommand('selectAll');
+                
+                const copyButton = document.getElementById('copyButton');
+                copyButton.textContent = 'Copiar ID';
+                setTimeout(() => {
+                    copyButton.textContent = 'Copiar ID';
+                }, 2000);
+            }
+        }
+        
+        document.getElementById('copyButton').addEventListener('click', () => {
+            const resultValue = document.getElementById('resultValue');
+            const secretId = resultValue.textContent.replace('ID: ', '');
+            copyToClipboard(secretId);
+        });
+        
+        function copyToClipboard(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text)
+                    .then(() => {
+                        const copyButton = document.getElementById('copyButton');
+                        copyButton.textContent = 'Copiado!';
+                        setTimeout(() => {
+                            copyButton.textContent = 'Copiar ID';
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy: ', err);
+                        // Fallback: show the ID in a selectable text box
+                        const resultValue = document.getElementById('resultValue');
+                        resultValue.contentEditable = true;
+                        resultValue.focus();
+                        document.execCommand('selectAll');
+                    });
+            } else {
+                // Fallback for browsers without Clipboard API
+                const resultValue = document.getElementById('resultValue');
+                resultValue.contentEditable = true;
+                resultValue.focus();
+                document.execCommand('selectAll');
+                
+                const copyButton = document.getElementById('copyButton');
+                copyButton.textContent = 'Copiar ID';
+                setTimeout(() => {
+                    copyButton.textContent = 'Copiar ID';
+                }, 2000);
+            }
+        }
+        
+        document.getElementById('copyButton').addEventListener('click', () => {
+            const resultValue = document.getElementById('resultValue');
+            const secretId = resultValue.textContent.replace('ID: ', '');
+            copyToClipboard(secretId);
+        });
+    </script>
+</body>
+</html>
