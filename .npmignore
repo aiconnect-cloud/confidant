@@ -1,0 +1,34 @@
+# Source files (only dist is needed)
+src/
+
+# Test files
+*.test.ts
+*.test.js
+*.test.d.ts
+*.test.d.ts.map
+*.test.js.map
+dist/*.test.*
+dist/**/*.test.*
+
+# Development files
+tsconfig.json
+vitest.config.ts
+.gitignore
+
+# Documentation and planning (internal)
+openspec/
+plans/
+SPEC.md
+
+# IDE and OS files
+.idea/
+.vscode/
+.kilocode/
+.DS_Store
+
+# CI/CD
+.github/
+
+# Coverage and logs
+coverage/
+*.log

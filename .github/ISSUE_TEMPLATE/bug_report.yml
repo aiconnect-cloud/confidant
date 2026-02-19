@@ -1,0 +1,43 @@
+name: Bug report
+description: Report a problem to help us improve Confidant
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for taking the time to report a bug. Please do not include secrets in this report."
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you observe?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Include commands and minimal steps.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Confidant version
+      description: Output of `confidant --version` (or package version)
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      description: Output of `node -v`
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      description: e.g., macOS 14, Ubuntu 22.04, Windows 11

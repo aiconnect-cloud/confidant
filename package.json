@@ -1,0 +1,84 @@
+{
+  "name": "@aiconnect/confidant",
+  "version": "1.5.2",
+  "description": "Secure secret handoff system with time-limited access",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "bin": {
+    "confidant": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "public",
+    "README.md"
+  ],
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "cli": "node dist/cli.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "prepublishOnly": "npm run build",
+    "preversion": "npm run test:run",
+    "version": "npm run build",
+    "postversion": "git push && git push --tags",
+    "release:patch": "npm version patch",
+    "release:minor": "npm version minor",
+    "release:major": "npm version major",
+    "publish:npm": "npm publish --access public",
+    "skill:publish": "npx clawdhub publish ./clawhub/skill --slug confidant --registry \"https://www.clawhub.ai\""
+  },
+  "keywords": [
+    "secret",
+    "handoff",
+    "security",
+    "ttl",
+    "hono",
+    "api",
+    "confidant",
+    "one-time-secret"
+  ],
+  "author": "AI Connect",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aiconnect-cloud/confidant.git"
+  },
+  "homepage": "https://github.com/aiconnect-cloud/confidant#readme",
+  "bugs": {
+    "url": "https://github.com/aiconnect-cloud/confidant/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.9",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "hono": "^4.0.0",
+    "node-fetch": "^3.3.2",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.30",
+    "@vitest/ui": "^4.0.18",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}
