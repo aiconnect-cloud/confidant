@@ -1,6 +1,6 @@
 {
   "name": "@aiconnect/confidant",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "Secure secret handoff system with time-limited access",
   "main": "dist/index.js",
   "module": "dist/index.js",
