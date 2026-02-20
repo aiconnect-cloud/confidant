@@ -17,12 +17,27 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# --- Dependency check ---
+
+if ! command -v jq &>/dev/null; then
+  if $JSON_OUTPUT; then
+    echo '{"error":"jq is required but not installed","code":"MISSING_DEPENDENCY","hint":"Ubuntu/Debian: apt-get install -y jq | macOS: brew install jq"}' >&2
+  else
+    echo "Error: jq is required but not installed." >&2
+    echo "  Ubuntu/Debian: apt-get install -y jq" >&2
+    echo "  macOS: brew install jq" >&2
+  fi
+  exit 2
+fi
+
 # Check server health
 SERVER_STATUS="stopped"
 SERVER_PID=""
 if curl -sf "http://localhost:${PORT}/health" > /dev/null 2>&1; then
   SERVER_STATUS="running"
-  SERVER_PID=$(lsof -ti ":${PORT}" 2>/dev/null | head -1 || echo "unknown")
+  SERVER_PID=$(lsof -ti ":${PORT}" 2>/dev/null | head -1 \
+    || fuser "${PORT}/tcp" 2>/dev/null | awk '{print $1}' \
+    || echo "unknown")
 fi
 
 # Check tunnels
