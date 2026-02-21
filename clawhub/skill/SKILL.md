@@ -136,6 +136,32 @@ bash {skill}/scripts/check-server.sh --json
 
 Reports server status, port, PID, and tunnel state (ngrok or localtunnel).
 
+## ⏱ Long-Running Process — Use tmux
+
+The `request-secret.sh` script **blocks until the secret is submitted** (it polls continuously). Most agent runtimes (including OpenClaw's `exec` tool) impose execution timeouts that will **kill the process before the user has time to submit**.
+
+**Always run Confidant inside a tmux session:**
+
+```bash
+# 1. Start server in tmux
+tmux new-session -d -s confidant
+tmux send-keys -t confidant "confidant serve --port 3000" Enter
+
+# 2. Create request in a second tmux window
+tmux new-window -t confidant -n request
+tmux send-keys -t confidant:request "confidant request --label 'API Key' --service openai" Enter
+
+# 3. Share the URL with the user (read from tmux output)
+tmux capture-pane -p -t confidant:request -S -30
+
+# 4. After user submits, check the result
+tmux capture-pane -p -t confidant:request -S -10
+```
+
+> **Why not `exec`?** Agent runtimes typically kill processes after 30-60s. Since the script waits for human input (which can take minutes), it gets SIGKILL before completion. tmux keeps the process alive independently.
+
+If your agent platform supports long-running background processes without timeouts, `exec` with `request-secret.sh` works fine. But when in doubt, **use tmux**.
+
 ## Rules for Agents
 
 1. **NEVER ask users to paste secrets in chat** — always use this skill
