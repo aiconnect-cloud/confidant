@@ -5,6 +5,8 @@ import { generateAllUrls } from '../url-helper.js';
 import { detectAllLocalIps } from '../network-detection.js';
 import { saveSecret, getServicePath, validateSaveOptions, maskSecret } from '../file-save.js';
 import { t } from '../i18n.js';
+import { auditLogger } from '../cli/audit.js';
+import { isOpenClawWorkspace, getOpenClawConfigPath, detectFramework } from '../utils/framework.js';
 
 export const requestCommand = new Command('request')
   .description('Create a secret request and poll for the secret')
@@ -18,6 +20,7 @@ export const requestCommand = new Command('request')
   .option('--json', 'Output in JSON format')
   .option('--quiet', 'Minimal output (only URLs and secret)')
   .option('--verbose', 'Verbose output with detailed logging')
+  .option('--openclaw', t('openclawOption'))
   .addHelpText('after', `
 Examples:
   confidant request                          # Create request with default settings
@@ -30,6 +33,8 @@ Examples:
   confidant request --json                   # Output in JSON format
   confidant request --quiet                   # Minimal output
   confidant request --verbose                 # Show detailed information including network detection
+  confidant request --openclaw                # Output in OpenClaw config format
+  confidant request --openclaw --label "API Key"  # OpenClaw with label
 
 URL Options:
   When you create a request, multiple URLs are displayed for different scenarios:
@@ -231,6 +236,15 @@ async function createAndPoll(
     }
   }
 
+  // Audit: request created
+  auditLogger.requestCreate({
+    resourceId: result.id,
+    resourceHash: result.hash,
+    expiresAt: result.expiresAt,
+    ttlSeconds: expiresIn,
+    label: options.label,
+  });
+
   // Start polling
   if (!options.json) {
     console.log(chalk.gray('Waiting for secret submission...'));
@@ -322,6 +336,61 @@ async function pollForSecret(
             }
           }
 
+          // Handle --openclaw flag: output config entries for merging into OpenClaw config
+          if (options.openclaw) {
+            const framework = detectFramework();
+            const isInOpenClaw = isOpenClawWorkspace();
+            const label = options.service || options.label || 'default';
+            const envVar = options.env || `${label.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_API_KEY`;
+            const configPath = getOpenClawConfigPath(label, envVar);
+
+            const openclawEntry = {
+              [configPath]: secret,
+            };
+
+            if (options.json) {
+              console.log(JSON.stringify({
+                openclaw: true,
+                detected: isInOpenClaw,
+                framework: framework.framework,
+                configPath,
+                entry: openclawEntry,
+                secret: saveResult ? maskSecret(secret) : secret,
+                mergeInstructions: `Merge into skills.entries.${label}.env.${envVar}`,
+              }, null, 2));
+            } else {
+              console.log(chalk.bold(t('openclawConfigEntry')));
+              if (isInOpenClaw) {
+                console.log(chalk.green(`  ✓ ${t('openclawDetected')}`));
+              } else {
+                console.log(chalk.yellow(`  ⚠ ${t('openclawNotDetected')}`));
+              }
+              console.log('');
+              console.log(chalk.cyan(t('openclawMergeInstructions')));
+              console.log('');
+              console.log(chalk.gray('  # Add this to your OpenClaw config:'));
+              console.log(chalk.gray(`  # skills:`));
+              console.log(chalk.gray(`  #   entries:`));
+              console.log(chalk.gray(`  #     ${label}:`));
+              console.log(chalk.gray(`  #       env:`));
+              console.log(chalk.green(`  #         ${envVar}: "${maskSecret(secret)}"`));
+              console.log('');
+              console.log(chalk.gray('  # Or in YAML format:'));
+              console.log(chalk.green(`  skills.entries.${label}.env.${envVar}: "${maskSecret(secret)}"`));
+              console.log('');
+            }
+
+            // Audit event
+            auditLogger.requestCompleted({
+              resourceId: requestId,
+              savedTo: configPath,
+              envVar,
+              metadata: { openclaw: true, framework: framework.framework },
+            });
+
+            return;
+          }
+
           if (options.json) {
             const output: any = {
               secret: saveResult ? maskSecret(secret) : secret,
@@ -351,11 +420,23 @@ async function pollForSecret(
             console.log(chalk.gray('The secret has been deleted from the server.'));
           }
 
+          // Audit: request completed
+          auditLogger.requestCompleted({
+            resourceId: requestId,
+            savedTo: saveResult?.savedTo,
+            envVar: saveResult?.envVar,
+          });
+
           return;
         } else if (result.status === 'expired') {
+          auditLogger.requestExpired({
+            resourceId: requestId,
+            label: options.label,
+          });
           throw new Error('Request has expired');
         } else if (result.status === 'pending') {
           // Continue polling
+          auditLogger.requestPoll({ resourceId: requestId, status: 'pending' });
           if (options.verbose && !options.json) {
             console.log(chalk.gray('Still waiting...'));
           }
