@@ -13,6 +13,7 @@ import { statusCommand } from './commands/status.js';
 import { requestCommand } from './commands/request.js';
 import { serveRequestCommand } from './commands/serve-request.js';
 import { fillCommand } from './commands/fill.js';
+import { auditLogger } from './cli/audit.js';
 
 // Read version from package.json
 const require = createRequire(import.meta.url);
@@ -25,6 +26,13 @@ program
   .description(t('programDescription'))
   .version(packageJson.version)
   .option('--api-url <url>', t('apiUrlOption'), process.env.CONFIDANT_API_URL || 'http://localhost:3000')
+  .option('--audit', t('auditOption'))
+  .hook('preAction', (thisCommand) => {
+    const opts = thisCommand.opts();
+    if (opts.audit) {
+      auditLogger.setEnabled(true);
+    }
+  })
   .addCommand(createCommand)
   .addCommand(getCommand)
   .addCommand(getRequestCommand)

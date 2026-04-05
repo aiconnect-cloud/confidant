@@ -1,6 +1,7 @@
 ---
 name: confidant
 description: Secure secret handoff and credential setup wizard for AI agents. Use when you need sensitive information from the user (API keys, passwords, tokens) or need to save credentials to config files. Never ask for secrets via chat — use Confidant instead.
+always: true
 ---
 
 # Confidant
@@ -42,6 +43,23 @@ Share the URL above with the user. Secret expires after submission or 24h.
 
 Share the URL → user opens it → submits the secret → done.
 
+## Required Binaries
+
+The following binaries must be available for full functionality:
+
+| Binary | Purpose | Required For |
+|--------|---------|-------------|
+| `curl` | Health checks, tunnel detection | Server status, tunnel auto-detect |
+| `jq` | JSON parsing in scripts | All script output parsing |
+| `pgrep` | Process detection | Tunnel detection (localtunnel, ngrok) |
+| `lsof` | Port ownership check | Server diagnostics (`check-server.sh`) |
+| `fuser` | Port ownership check (fallback) | Server diagnostics (`check-server.sh`) |
+| `tmux` | Terminal multiplexer | Background tunnel management (advanced use) |
+| `npx` | Package runner | All CLI invocation (never install globally) |
+| `lt` (localtunnel) | Public tunnel provider | `--tunnel` flag for remote users |
+
+> **Note:** Never install `@aiconnect/confidant` globally with `npm install -g`. Always use `npx @aiconnect/confidant` — this ensures you always run the latest version without manual updates and avoids permission issues.
+
 ## Scripts
 
 ### `request-secret.sh` — Create a secure request (recommended)
@@ -76,6 +94,7 @@ Share the URL → user opens it → submits the secret → done.
 | `--port <number>` | Server port (default: 3000) |
 | `--timeout <secs>` | Max wait for startup (default: 15) |
 | `--json` | Output JSON instead of human-readable text |
+| `--openclaw` | Output in OpenClaw `skills.entries.<label>.env` config format |
 
 ### `check-server.sh` — Server diagnostics (no side effects)
 
@@ -105,6 +124,27 @@ Reports server status, port, PID, and tunnel state (ngrok or localtunnel).
 4. User opens the URL in their browser and submits the secret
 5. Secret is received, optionally saved to disk (`chmod 600`), then destroyed on server
 
+## 🔒 Security Guidance
+
+### Tunnel Exposure Risks
+
+When using `--tunnel` or manually running tunneling services, be aware:
+
+- **Tunnels expose your local server to the public internet.** Anyone with the URL can access it until the server stops.
+- **Tunnel URLs are often predictable** (e.g., localtunnel generates reusable subdomains). Do not assume obscurity = security.
+- **Never leave a tunnel running after the secret exchange is complete.** Stop the tunnel process once done.
+- **Tunnel providers may log traffic.** ngrok logs requests by default; localtunnel traffic passes through their servers.
+- **Always use HTTPS tunnels** — never tunnel over plain HTTP. Both ngrok and localtunnel provide HTTPS endpoints.
+- **Rotate secrets** if you suspect a tunnel URL was exposed or shared unintentionally.
+- **The `--openclaw` flag** stores secrets in your OpenClaw config file. Ensure that config file has restricted permissions (`chmod 600`).
+
+### Best Practices
+
+- Use local URLs (`localhost`) whenever possible — only tunnel when the user is truly remote.
+- Keep request TTL as short as practical — the default 24h is often too long.
+- Verify the user received and submitted the secret before leaving the tunnel open.
+- After secret delivery, the server-side copy is destroyed — only your saved copy remains.
+
 ## Tunnel Options
 
 | Provider | Account needed | How |
@@ -130,6 +170,12 @@ npx @aiconnect/confidant fill "<url>" --secret "<value>"
 
 # Check a specific request
 npx @aiconnect/confidant get <id>
+
+# OpenClaw config output
+npx @aiconnect/confidant request --openclaw --label "API Key" --service openai
+
+# Audit logging (JSON events to stdout)
+npx @aiconnect/confidant --audit request --label "Key" --service myapp
 ```
 
 ⚠️ Only use direct CLI if the scripts don't cover your case.

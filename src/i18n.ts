@@ -83,6 +83,16 @@ export const translations = {
   localhostUrl: '  - %s (localhost)',
   networkUrl: '  - %s (local network)',
   pressCtrlCToStop: 'Press Ctrl+C to stop the server',
+
+  // OpenClaw integration
+  openclawOption: 'Output in OpenClaw config format for merging into skills.entries',
+  openclawDetected: 'OpenClaw workspace detected',
+  openclawConfigEntry: 'OpenClaw config entry',
+  openclawMergeInstructions: 'Merge the following into your OpenClaw config (e.g., ~/.openclaw/config.yaml):',
+  openclawNotDetected: 'Not running inside an OpenClaw workspace — config entries generated but not auto-applied',
+
+  // Audit
+  auditOption: 'Emit JSON audit events to stdout (one per line) for external consumption',
 } as const;
 
 export type TranslationKey = keyof typeof translations;
